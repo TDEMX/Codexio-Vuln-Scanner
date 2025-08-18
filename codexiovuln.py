@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
+
 import os
 import subprocess
 import time
-import json
-import requests
 from urllib.parse import urlparse
-import re
-from colorama import Fore, Style, init
-
- 
-init(autoreset=True)
-
- 
-DEEPSEEK_API_KEY = "sk-e40432a718784f9796fa28d89ca20c66" 
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 BANNER = """
 \033[1;33m
@@ -25,7 +15,8 @@ BANNER = """
  ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝ 
 \033[1;32m   A N A L Y Z E R\033[0m          \033[1;33m|___/\033[0m
 
-\033[1;36mAdvanced Web Vulnerability Scanner with AI Remediation\033[0m
+\033[1;36mAdvanced Web Application Vulnerability Scanner\033[0m
+\033[1;31mNow with OWASP ZAP, XSStrike, Nuclei, Subdomain Enumeration & More!\033[0m
 """
 
 def clear_screen():
@@ -42,133 +33,201 @@ def is_valid_url(url):
     except ValueError:
         return False
 
+def is_wordpress(url):
+    try:
+        response = subprocess.run(['curl', '-s', '-I', f'{url}/wp-admin/'], 
+                                capture_output=True, text=True)
+        return 'wp-admin' in response.stdout
+    except:
+        return False
+
+def is_joomla(url):
+    try:
+        response = subprocess.run(['curl', '-s', f'{url}/administrator/'], 
+                                capture_output=True, text=True)
+        return 'joomla' in response.stdout.lower()
+    except:
+        return False
+
 def run_nikto_scan(url):
-    print(f"\n{Fore.YELLOW}[+] Running Nikto scan on {url}{Style.RESET_ALL}")
+    print(f"\n\033[1;34m[+] Running Nikto scan on {url}\033[0m")
     try:
         result = subprocess.run(['nikto', '-h', url], capture_output=True, text=True)
         return result.stdout
     except FileNotFoundError:
         return "Nikto not found. Please install it with 'sudo apt install nikto'"
 
-def parse_nikto_output(nikto_output):
-    """Improved Nikto output parser with vulnerability categorization"""
-    vulnerabilities = []
-    critical_signatures = [
-        ('XSS', r'XSS'),
-        ('SQLi', r'SQL injection'),
-        ('RCE', r'OSVDB-\d+.*command execution'),
-        ('SSL', r'SSL.*weak'),
-        ('Directory Listing', r'Directory listing found')
-    ]
-    
-    for line in nikto_output.split('\n'):
-        if '+ ' in line:
-            for vuln_type, pattern in critical_signatures:
-                if re.search(pattern, line, re.IGNORECASE):
-                    vulnerabilities.append({
-                        'type': vuln_type,
-                        'description': line.strip(),
-                        'severity': 'High' if vuln_type in ['SQLi', 'RCE'] else 'Medium'
-                    })
-                    break
-            else:
-                vulnerabilities.append({
-                    'type': 'Info',
-                    'description': line.strip(),
-                    'severity': 'Low'
-                })
-    return vulnerabilities
-
-def query_deepseek_for_remediation(vulnerability):
-    """Query DeepSeek API for vulnerability remediation"""
-    prompt = f"""
-    As a cybersecurity expert, provide specific remediation for:
-    {vulnerability['description']}
-    
-    Include:
-    1. Short problem summary
-    2. Step-by-step solution
-    3. Relevant terminal commands
-    4. Configuration changes needed
-    
-    Format as markdown.
-    """
-    
-    headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.5
-    }
-    
+def run_nmap_scan(url):
+    print(f"\033[1;34m[+] Running Nmap scan on {url}\033[0m")
     try:
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"API Error: {str(e)}"
+        result = subprocess.run(['nmap', '-sV', '--script=vulners', urlparse(url).netloc], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "Nmap not found. Please install it with 'sudo apt install nmap'"
 
-def display_results(url, vulnerabilities):
-    """Display vulnerabilities and AI-powered solutions"""
-    print(f"\n{Fore.CYAN}══════════════════════════════════════════════════")
-    print(f" Scan Results for: {url}")
-    print(f"══════════════════════════════════════════════════{Style.RESET_ALL}")
-    
-    for idx, vuln in enumerate(vulnerabilities, 1):
-        print(f"\n{Fore.YELLOW}⚠️ Vulnerability #{idx}: {vuln['type']} ({vuln['severity']})")
-        print(f"{Fore.WHITE}{vuln['description']}")
-        
-        # Get AI-powered solution
-        print(f"\n{Fore.GREEN}🛡️ DeepSeek AI Recommendation:")
-        solution = query_deepseek_for_remediation(vuln)
-        print(f"{Fore.CYAN}{solution}")
-        
-        print(f"{Fore.CYAN}──────────────────────────────────────────────────")
+def run_dirb_scan(url):
+    print(f"\033[1;34m[+] Running directory brute-force scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['dirb', url], capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "DIRB not found. Please install it with 'sudo apt install dirb'"
+
+def run_sqlmap_scan(url):
+    print(f"\033[1;34m[+] Running SQL injection scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['sqlmap', '-u', url, '--batch', '--crawl=1', '--level=2', '--risk=2'], 
+                              capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "SQLmap not found. Please install it with 'sudo apt install sqlmap'"
+
+def run_wpscan(url):
+    print(f"\033[1;34m[+] Running WordPress vulnerability scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['wpscan', '--url', url, '--enumerate', 'vp', '--plugins-detection', 'mixed'], 
+                              capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "WPScan not found. Please install it with 'sudo apt install wpscan'"
+
+def run_owasp_zap_scan(url):
+    print(f"\n\033[1;34m[+] Running OWASP ZAP scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['zap-cli', 'quick-scan', '--self-contained', '--start-options', '-config api.key=12345', url], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "OWASP ZAP not found. Install with 'sudo apt install zaproxy && pip install zapcli'"
+
+def run_xsstrike_scan(url):
+    print(f"\n\033[1;34m[+] Running XSStrike scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['python3', 'XSStrike/xsstrike.py', '-u', url, '--timeout', '10'], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "XSStrike not found. Clone from GitHub: 'git clone https://github.com/s0md3v/XSStrike'"
+
+def run_nuclei_scan(url):
+    print(f"\n\033[1;34m[+] Running Nuclei scan on {url}\033[0m")
+    try:
+        result = subprocess.run(['nuclei', '-u', url, '-t', '~/nuclei-templates'], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "Nuclei not found. Install with 'go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest'"
+
+def run_subdomain_scan(domain):
+    print(f"\n\033[1;34m[+] Running Subdomain scan on {domain}\033[0m")
+    try:
+        result = subprocess.run(['sublist3r', '-d', domain, '-o', 'subdomains.txt'], 
+                             capture_output=True, text=True)
+        with open("subdomains.txt", "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Sublist3r not found. Install with 'sudo apt install sublist3r'"
+
+def run_ssl_scan(url):
+    print(f"\n\033[1;34m[+] Running SSL/TLS scan on {url}\033[0m")
+    try:
+        domain = urlparse(url).netloc
+        result = subprocess.run(['testssl.sh', domain], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "testssl.sh not found. Download from GitHub."
+
+def run_joomscan(url):
+    print(f"\n\033[1;34m[+] Running JoomScan on {url}\033[0m")
+    try:
+        result = subprocess.run(['perl', 'joomscan/joomscan.pl', '-u', url], 
+                             capture_output=True, text=True)
+        return result.stdout
+    except FileNotFoundError:
+        return "JoomScan not found. Install from GitHub: 'git clone https://github.com/rezasp/joomscan'"
+
+def generate_report(url, scan_results):
+    report = f"""
+\033[1;35m
+=============================================
+        VULNERABILITY SCAN REPORT
+=============================================
+Target URL: {url}
+Scan Date: {time.strftime("%Y-%m-%d %H:%M:%S")}
+WordPress Detected: {'Yes' if scan_results['is_wp'] else 'No'}
+Joomla Detected: {'Yes' if scan_results['is_joomla'] else 'No'}
+=============================================
+\033[0m"""
+
+    for scan_name, result in scan_results.items():
+        if scan_name not in ['is_wp', 'is_joomla'] and result:
+            report += f"""
+\033[1;32m
+=== {scan_name.upper().replace('_', ' ')} RESULTS ===
+\033[0m
+{result}"""
+
+    report += """
+\033[1;31m
+=== SCAN COMPLETE ===
+\033[0m
+"""
+    return report
 
 def main():
     display_banner()
-    url = input(f"\n{Fore.WHITE}Enter target URL (e.g., http://example.com): ")
     
-    if not is_valid_url(url):
-        print(f"{Fore.RED}Invalid URL format! Please include http:// or https://")
-        return
-    
-    print(f"\n{Fore.YELLOW}Starting scan on {url}...{Style.RESET_ALL}")
-    
-    # Run Nikto scan
-    nikto_output = run_nikto_scan(url)
-    
-    # Parse vulnerabilities
-    vulnerabilities = parse_nikto_output(nikto_output)
-    
-    if not vulnerabilities:
-        print(f"{Fore.GREEN}No vulnerabilities found!{Style.RESET_ALL}")
-        return
-    
-    # Display results with AI solutions
-    display_results(url, vulnerabilities)
-    
-    # Save report
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    report_file = f"nikto_scan_{urlparse(url).netloc}_{timestamp}.txt"
-    with open(report_file, 'w') as f:
-        f.write(f"Scan Report for {url}\n")
-        f.write(f"Generated at: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        for vuln in vulnerabilities:
-            f.write(f"== {vuln['type']} ({vuln['severity']}) ==\n")
-            f.write(f"{vuln['description']}\n\n")
-    
-    print(f"\n{Fore.GREEN}Report saved to {report_file}{Style.RESET_ALL}")
+    while True:
+        url = input("\n\033[1;37mEnter the target URL (e.g., http://example.com) or 'q' to quit: \033[0m")
+        
+        if url.lower() == 'q':
+            print("\n\033[1;31mExiting Codexio Analyzer...\033[0m")
+            break
+            
+        if not is_valid_url(url):
+            print("\033[1;31mInvalid URL format. Please include http:// or https://\033[0m")
+            continue
+            
+        print(f"\n\033[1;33mStarting advanced scan on {url}...\033[0m")
+        
+        scan_results = {
+            'is_wp': is_wordpress(url),
+            'is_joomla': is_joomla(url),
+            'nikto_scan': run_nikto_scan(url),
+            'nmap_scan': run_nmap_scan(url),
+            'dirb_scan': run_dirb_scan(url),
+            'sqlmap_scan': run_sqlmap_scan(url),
+            'owasp_zap_scan': run_owasp_zap_scan(url),
+            'xsstrike_scan': run_xsstrike_scan(url),
+            'nuclei_scan': run_nuclei_scan(url),
+            'subdomain_scan': run_subdomain_scan(urlparse(url).netloc),
+            'ssl_scan': run_ssl_scan(url)
+        }
+        
+        if scan_results['is_wp']:
+            scan_results['wpscan'] = run_wpscan(url)
+        if scan_results['is_joomla']:
+            scan_results['joomscan'] = run_joomscan(url)
+        
+        report = generate_report(url, scan_results)
+        print(report)
+        
+        save = input("\n\033[1;37mDo you want to save the report to a file? (y/n): \033[0m")
+        if save.lower() == 'y':
+            filename = f"scan_report_{urlparse(url).netloc}_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(filename, 'w') as f:
+                f.write(report)
+            print(f"\033[1;32mReport saved as {filename}\033[0m")
+        
+        input("\nPress Enter to continue scanning or Ctrl+C to exit...")
+        display_banner()
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(f"\n{Fore.RED}Scan interrupted by user.{Style.RESET_ALL}")
+        print("\n\033[1;31mScan interrupted. Exiting...\033[0m")
     except Exception as e:
-        print(f"\n{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
-
-
+        print(f"\n\033[1;31mAn error occurred: {str(e)}\033[0m")
