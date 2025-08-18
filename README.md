@@ -31,7 +31,7 @@
 
 ## 🛠️ Installation
 ```bash
-git clone https://github.com/codexio/main-tool.git
+git clone https://github.com/TDEMX/Codexio-Vuln-Scanner.git
 cd main-tool
 pip install -r requirements.txt
 chmod +x codexio_scanner.py
