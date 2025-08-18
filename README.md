@@ -31,7 +31,31 @@
 
 ## 🛠️ Installation
 ```bash
+
+sudo apt update && sudo apt upgrade -y
+
+sudo apt install -y python3 python3-pip git curl wget perl nmap nikto dirb sqlmap wpscan sublist3r golang zaproxy
+
+pip3 install --user zapcli
+
+git clone https://github.com/s0md3v/XSStrike.git
+cd XSStrike && pip3 install -r requirements.txt && cd ..
+
+go install -v github.com/projectdiscovery/nuclei/v2/cmd/nuclei@latest
+echo 'export PATH=$PATH:~/go/bin' >> ~/.bashrc
+source ~/.bashrc
+git clone https://github.com/projectdiscovery/nuclei-templates.git ~/nuclei-templates
+
+git clone https://github.com/rezasp/joomscan.git
+cd joomscan && chmod +x joomscan.pl && cd ..
+
+git clone --depth 1 https://github.com/drwetter/testssl.sh.git
+ln -s $(pwd)/testssl.sh/testssl.sh /usr/local/bin/testssl.sh
+
 git clone https://github.com/TDEMX/Codexio-Vuln-Scanner.git
 cd Codexio-Vuln-Scanner
-pip install -r requirements.txt
-chmod +x codexio_scanner.py
+chmod +x codexio.py
+pip3 install -r requirements.txt
+
+echo -e "\n\033[1;32mInstallation complete!\033[0m"
+echo -e "Run the scanner with: \033[1;33mcd Codexio-Vuln-Scanner && ./codexio.py\033[0m"
