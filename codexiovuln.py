@@ -8,11 +8,11 @@ from urllib.parse import urlparse
 import re
 from colorama import Fore, Style, init
 
-# Initialize colorama
+ 
 init(autoreset=True)
 
-# DeepSeek API Configuration
-DEEPSEEK_API_KEY = "sk-e40432a718784f9796fa28d89ca20c66"  # Replace with your actual API key
+ 
+DEEPSEEK_API_KEY = "sk-e40432a718784f9796fa28d89ca20c66" 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 BANNER = """
@@ -170,4 +170,5 @@ if __name__ == "__main__":
         print(f"\n{Fore.RED}Scan interrupted by user.{Style.RESET_ALL}")
     except Exception as e:
         print(f"\n{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
+
 
