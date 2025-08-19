@@ -3,7 +3,12 @@
 import os
 import subprocess
 import time
-from urllib.parse import urlparse
+import requests
+import socket
+import ssl
+import argparse
+from urllib.parse import urlparse, urljoin
+from datetime import datetime
 
 BANNER = """
 \033[1;33m
@@ -18,6 +23,156 @@ BANNER = """
 \033[1;36mAdvanced Web Application Vulnerability Scanner\033[0m
 \033[1;31mNow with OWASP ZAP, XSStrike, Nuclei, Subdomain Enumeration & More!\033[0m
 """
+
+class SimpleNikto:
+    def __init__(self, target_url):
+        self.target_url = target_url if target_url.startswith(('http://', 'https://')) else f'http://{target_url}'
+        self.parsed_url = urlparse(self.target_url)
+        self.host = self.parsed_url.netloc
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+        })
+        self.results = []
+        
+    def print_banner(self):
+        print("\n\033[1;33m[+] Running Custom Nikto-like Scanner\033[0m")
+        
+    def check_server_info(self):
+        """Check server information and headers"""
+        try:
+            response = self.session.get(self.target_url, timeout=10)
+            server = response.headers.get('Server', 'Not detected')
+            powered_by = response.headers.get('X-Powered-By', 'Not detected')
+            
+            self.log_result('INFO', f"HTTP Status: {response.status_code}")
+            self.log_result('INFO', f"Server: {server}")
+            self.log_result('INFO', f"X-Powered-By: {powered_by}")
+            
+            # Check for missing security headers
+            security_headers = {
+                'X-Frame-Options': 'Missing X-Frame-Options header (clickjacking protection)',
+                'X-XSS-Protection': 'Missing X-XSS-Protection header (XSS protection)',
+                'X-Content-Type-Options': 'Missing X-Content-Type-Options header (MIME sniffing protection)',
+                'Strict-Transport-Security': 'Missing HSTS header (SSL/TLS enforcement)',
+                'Content-Security-Policy': 'Missing Content-Security-Policy header (XSS protection)'
+            }
+            
+            for header, message in security_headers.items():
+                if header not in response.headers:
+                    self.log_result('MEDIUM', message)
+            
+            return response
+        except Exception as e:
+            self.log_result('ERROR', f"Failed to retrieve server info: {str(e)}")
+            return None
+    
+    def check_ssl(self):
+        """Check SSL certificate details"""
+        try:
+            context = ssl.create_default_context()
+            with socket.create_connection((self.host, 443), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=self.host) as ssock:
+                    cert = ssock.getpeercert()
+                    
+                    # Check certificate expiration
+                    expire_date = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
+                    days_until_expire = (expire_date - datetime.now()).days
+                    
+                    self.log_result('INFO', f"SSL Certificate Issuer: {cert['issuer']}")
+                    self.log_result('INFO', f"SSL Certificate Expires: {expire_date} ({days_until_expire} days)")
+                    
+                    if days_until_expire < 30:
+                        self.log_result('HIGH', f"SSL Certificate expires soon: {days_until_expire} days")
+        except Exception as e:
+            self.log_result('INFO', f"No SSL certificate or SSL error: {str(e)}")
+    
+    def test_common_files(self):
+        """Test for common sensitive files and directories"""
+        common_paths = [
+            '/admin/', '/wp-admin/', '/administrator/', '/backup/', '/phpinfo.php',
+            '/test.php', '/info.php', '/robots.txt', '/.git/', '/.env', '/.htaccess',
+            '/backup.zip', '/database.sql', '/config.php', '/login.php', '/admin.php'
+        ]
+        
+        for path in common_paths:
+            full_url = urljoin(self.target_url, path)
+            try:
+                response = self.session.get(full_url, timeout=5)
+                if response.status_code == 200:
+                    self.log_result('LOW', f"Found accessible path: {full_url}")
+                elif response.status_code == 403:
+                    self.log_result('INFO', f"Restricted access: {full_url}")
+            except:
+                pass
+    
+    def test_http_methods(self):
+        """Test for potentially dangerous HTTP methods"""
+        methods = ['OPTIONS', 'TRACE', 'PUT', 'DELETE']
+        try:
+            for method in methods:
+                response = self.session.request(method, self.target_url, timeout=5)
+                if response.status_code < 400:
+                    self.log_result('MEDIUM', f"HTTP method allowed: {method}")
+        except:
+            pass
+    
+    def test_directory_traversal(self):
+        """Test for directory traversal vulnerabilities"""
+        traversal_patterns = [
+            '../etc/passwd', '..\\..\\..\\windows\\system32\\drivers\\etc\\hosts',
+            '....//....//....//etc/passwd', '%2e%2e%2fetc%2fpasswd'
+        ]
+        
+        for pattern in traversal_patterns:
+            test_url = urljoin(self.target_url, f"?file={pattern}")
+            try:
+                response = self.session.get(test_url, timeout=5)
+                if "root:" in response.text or "[boot loader]" in response.text:
+                    self.log_result('HIGH', f"Possible directory traversal: {test_url}")
+            except:
+                pass
+    
+    def log_result(self, level, message):
+        """Log results with severity level"""
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        print(f"  [{timestamp}] [{level}] {message}")
+        self.results.append((level, message))
+    
+    def generate_report(self):
+        """Generate a simple scan report"""
+        report = "\n\033[1;35m  === CUSTOM NIKTO SCAN RESULTS ===\033[0m\n"
+        
+        high_count = sum(1 for level, _ in self.results if level == 'HIGH')
+        medium_count = sum(1 for level, _ in self.results if level == 'MEDIUM')
+        low_count = sum(1 for level, _ in self.results if level == 'LOW')
+        
+        report += f"  High severity findings: {high_count}\n"
+        report += f"  Medium severity findings: {medium_count}\n"
+        report += f"  Low severity findings: {low_count}\n"
+        report += f"  Total findings: {len(self.results)}\n"
+        
+        if high_count > 0:
+            report += "\n  High severity issues:\n"
+            for level, message in self.results:
+                if level == 'HIGH':
+                    report += f"    - {message}\n"
+        
+        return report
+    
+    def run_scan(self):
+        """Run the complete security scan"""
+        self.print_banner()
+        
+        # Run various security checks
+        self.check_server_info()
+        self.check_ssl()
+        self.test_common_files()
+        self.test_http_methods()
+        self.test_directory_traversal()
+        
+        # Generate report
+        return self.generate_report()
 
 def clear_screen():
     os.system('clear' if os.name == 'posix' else 'cls')
@@ -148,6 +303,11 @@ def run_joomscan(url):
     except FileNotFoundError:
         return "JoomScan not found. Install from GitHub: 'git clone https://github.com/rezasp/joomscan'"
 
+def run_custom_nikto_scan(url):
+    """Run our custom Nikto-like scanner"""
+    scanner = SimpleNikto(url)
+    return scanner.run_scan()
+
 def generate_report(url, scan_results):
     report = f"""
 \033[1;35m
@@ -196,6 +356,7 @@ def main():
             'is_wp': is_wordpress(url),
             'is_joomla': is_joomla(url),
             'nikto_scan': run_nikto_scan(url),
+            'custom_nikto_scan': run_custom_nikto_scan(url),
             'nmap_scan': run_nmap_scan(url),
             'dirb_scan': run_dirb_scan(url),
             'sqlmap_scan': run_sqlmap_scan(url),
