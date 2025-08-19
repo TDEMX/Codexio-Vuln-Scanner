@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-උසස් රන් කිරීමේ ස්කැනරය - Advanced Web Vulnerability Scanner
-OWASP, Nikto, සහ අනෙකුත් ජනප්‍රිය මෙවලම්වල විශේෂාංග ඇතුළත්ය.
-"""
 
 import os
 import argparse
@@ -21,14 +17,12 @@ from urllib.parse import urlparse, quote, unquote
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-# Disable SSL warnings
 try:
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 except:
     pass
 
-# Banner for the scanner
 BANNER = """
 \033[1;33m
                              ___====-_  _-====___                         
@@ -63,16 +57,13 @@ BANNER = """
 """
 
 def clear_screen():
-    """Clear the terminal screen"""
     os.system('clear' if os.name == 'posix' else 'cls')
 
 def display_banner():
-    """Display the tool banner"""
     clear_screen()
     print(BANNER)
 
 def is_valid_url(url):
-    """Check if the provided URL is valid"""
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
@@ -100,7 +91,7 @@ class AdvancedScanner:
         self.auth = auth
         self.proxy = proxy
         self.follow_redirects = follow_redirects
-        self.scan_level = scan_level  # 1=Low, 2=Medium, 3=High
+        self.scan_level = scan_level 
         self.plugins = plugins or ["common_files", "common_dirs", "xss", "sqli", "rce"]
         
         self.results = []
@@ -114,21 +105,16 @@ class AdvancedScanner:
         if auth:
             self.session.auth = auth
         
-        # Set default port if not specified
         if not self.port:
             self.port = 443 if self.use_ssl else 80
         
-        # Set the base URL
         scheme = "https" if self.use_ssl else "http"
         self.base_url = f"{scheme}://{self.target}:{self.port}"
         
-        # Extended security checks database
         self.checks = self.load_checks()
         
-        # Vulnerability signatures
         self.vuln_signatures = self.load_vulnerability_signatures()
         
-        # Common headers for security testing
         self.test_headers = [
             "X-Forwarded-For",
             "X-Client-IP",
@@ -139,7 +125,6 @@ class AdvancedScanner:
         ]
 
     def get_random_user_agent(self):
-        """Return a random user agent"""
         user_agents = [
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
@@ -149,10 +134,8 @@ class AdvancedScanner:
         return random.choice(user_agents)
 
     def load_checks(self):
-        """Load security checks based on scan level"""
         checks = []
         
-        # Common files and directories
         common_files = [
             {"id": 1, "path": "/admin/", "description": "Admin directory"},
             {"id": 2, "path": "/phpinfo.php", "description": "PHPInfo file"},
@@ -176,7 +159,6 @@ class AdvancedScanner:
             {"id": 20, "path": "/wp-login.php", "description": "WordPress login"},
         ]
         
-        # Medium level checks
         medium_checks = [
             {"id": 21, "path": "/.svn/", "description": "SVN repository"},
             {"id": 22, "path": "/.bash_history", "description": "Bash history"},
@@ -190,7 +172,6 @@ class AdvancedScanner:
             {"id": 30, "path": "/appsettings.json", "description": "App configuration"},
         ]
         
-        # High level checks
         high_checks = [
             {"id": 31, "path": "/../../../../etc/passwd", "description": "Path traversal test"},
             {"id": 32, "path": "/.%2e/%2e%2e/%2e%2e/%2e%2e/etc/passwd", "description": "URL-encoded path traversal"},
@@ -213,7 +194,6 @@ class AdvancedScanner:
         return checks
 
     def load_vulnerability_signatures(self):
-        """Load vulnerability detection signatures"""
         return {
             "sql_errors": [
                 "sql syntax.*mysql",
@@ -253,7 +233,6 @@ class AdvancedScanner:
         }
 
     def get_server_info(self):
-        """සර්වර් ගැන තොරතුරු ලබා ගනී"""
         try:
             headers = {'User-Agent': self.user_agent}
             response = self.session.get(self.base_url, headers=headers, timeout=self.timeout)
@@ -264,7 +243,6 @@ class AdvancedScanner:
             return f"Server information not available: {str(e)}"
 
     def check_ssl(self):
-        """SSL certificate ගැන තොරතුරු ලබා ගනී"""
         if not self.use_ssl:
             return "Not using SSL"
         
@@ -284,11 +262,9 @@ class AdvancedScanner:
             return f"SSL Error: {str(e)}"
 
     def dns_enumerate(self):
-        """DNS enumeration for subdomains and information"""
         try:
             print("\033[1;33m[*] Starting DNS enumeration...\033[0m")
             
-            # Common subdomains to check
             subdomains = [
                 "www", "mail", "ftp", "localhost", "webmail", "smtp", "pop", "ns1", "webdisk", 
                 "ns2", "cpanel", "whm", "autodiscover", "autoconfig", "m", "imap", "test", 
@@ -322,7 +298,6 @@ class AdvancedScanner:
             return []
 
     def check_http_methods(self):
-        """Check for potentially dangerous HTTP methods"""
         try:
             methods = ["OPTIONS", "TRACE", "PUT", "DELETE", "CONNECT", "PATCH"]
             dangerous_methods = []
@@ -347,7 +322,6 @@ class AdvancedScanner:
             return []
 
     def check_security_headers(self):
-        """Check for important security headers"""
         try:
             headers_to_check = [
                 "Strict-Transport-Security",
@@ -374,7 +348,6 @@ class AdvancedScanner:
             return []
 
     def test_xss_vulnerabilities(self):
-        """Test for potential XSS vulnerabilities"""
         try:
             test_payloads = [
                 "<script>alert('XSS')</script>",
@@ -388,7 +361,6 @@ class AdvancedScanner:
             response = self.session.get(self.base_url, timeout=self.timeout)
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Find forms and their parameters
             forms = soup.find_all('form')
             for form in forms:
                 form_action = form.get('action', '')
@@ -402,7 +374,6 @@ class AdvancedScanner:
                         value = input_tag.get('value', '') + random.choice(test_payloads)
                         form_params[name] = value
                 
-                # Test the form with XSS payloads
                 try:
                     target_url = urlparse(self.base_url)
                     full_url = f"{target_url.scheme}://{target_url.netloc}{form_action}"
@@ -412,7 +383,6 @@ class AdvancedScanner:
                     else:
                         response = self.session.get(full_url, params=form_params, timeout=self.timeout)
                     
-                    # Check if payload is reflected in response
                     for payload in test_payloads:
                         if payload in response.text:
                             vulnerable_params.append({
@@ -431,7 +401,6 @@ class AdvancedScanner:
             return []
 
     def test_sql_injection(self):
-        """Test for potential SQL injection vulnerabilities"""
         try:
             test_payloads = [
                 "'",
@@ -448,7 +417,6 @@ class AdvancedScanner:
             response = self.session.get(self.base_url, timeout=self.timeout)
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Find forms and their parameters
             forms = soup.find_all('form')
             for form in forms:
                 form_action = form.get('action', '')
@@ -462,7 +430,6 @@ class AdvancedScanner:
                         if name:
                             form_params[name] = payload
                     
-                    # Test the form with SQLi payloads
                     try:
                         target_url = urlparse(self.base_url)
                         full_url = f"{target_url.scheme}://{target_url.netloc}{form_action}"
@@ -472,7 +439,6 @@ class AdvancedScanner:
                         else:
                             response = self.session.get(full_url, params=form_params, timeout=self.timeout)
                         
-                        # Check for SQL error patterns
                         for pattern in self.vuln_signatures["sql_errors"]:
                             if re.search(pattern, response.text, re.IGNORECASE):
                                 vulnerable_params.append({
@@ -491,21 +457,17 @@ class AdvancedScanner:
             return []
 
     def check_for_vulnerabilities(self, url, response):
-        """Check response content for vulnerability signatures"""
         vulnerabilities = []
         content = response.text.lower()
         
-        # Check for SQL errors
         for pattern in self.vuln_signatures["sql_errors"]:
             if re.search(pattern, content, re.IGNORECASE):
                 vulnerabilities.append({"type": "SQL_ERROR", "pattern": pattern})
         
-        # Check for XSS patterns
         for pattern in self.vuln_signatures["xss_patterns"]:
             if re.search(pattern, content, re.IGNORECASE):
                 vulnerabilities.append({"type": "XSS_PATTERN", "pattern": pattern})
         
-        # Check for RCE patterns
         for pattern in self.vuln_signatures["rce_patterns"]:
             if re.search(pattern, content, re.IGNORECASE):
                 vulnerabilities.append({"type": "RCE_PATTERN", "pattern": pattern})
@@ -513,34 +475,27 @@ class AdvancedScanner:
         return vulnerabilities
 
     def run_checks(self):
-        """සියලුම security checks run කරයි"""
         print(f"\n\033[1;33m[*] Scanning {self.target}:{self.port}\033[0m")
         print(f"\033[1;33m[*] {self.get_server_info()}\033[0m")
         print(f"\033[1;33m[*] {self.check_ssl()}\033[0m")
         print(f"\033[1;33m[*] Using {self.threads} threads with scan level {self.scan_level}\033[0m")
         print("\033[1;33m[*] Starting comprehensive vulnerability assessment...\033[0m")
         
-        # Run DNS enumeration
         if "dns_enum" in self.plugins:
             self.dns_enumerate()
         
-        # Check HTTP methods
         if "http_methods" in self.plugins:
             self.check_http_methods()
         
-        # Check security headers
         if "security_headers" in self.plugins:
             self.check_security_headers()
         
-        # Test for XSS vulnerabilities
         if "xss" in self.plugins:
             self.test_xss_vulnerabilities()
         
-        # Test for SQL injection vulnerabilities
         if "sqli" in self.plugins:
             self.test_sql_injection()
         
-        # Run directory and file checks
         if "common_files" in self.plugins or "common_dirs" in self.plugins:
             print("\033[1;33m[*] Starting directory and file checks...\033[0m")
             for check in self.checks:
@@ -550,7 +505,6 @@ class AdvancedScanner:
                     response = self.session.get(url, headers=headers, timeout=self.timeout, allow_redirects=False)
                     
                     if response.status_code == 200:
-                        # Check for vulnerabilities in the response
                         vulns = self.check_for_vulnerabilities(url, response)
                         
                         result = {
@@ -580,7 +534,6 @@ class AdvancedScanner:
                         self.results.append(result)
                         print(f"\033[1;33m[~] Redirect: {check['description']} at {url}\033[0m")
                     
-                    # Add delay if specified
                     if self.delay > 0:
                         time.sleep(self.delay)
                         
@@ -590,7 +543,6 @@ class AdvancedScanner:
         print(f"\033[1;33m[*] Scan completed. Found {len(self.results)} potential issues.\033[0m")
 
     def save_results(self):
-        """ප්‍රතිඵල save කරයි"""
         if not self.output_file:
             return
         
@@ -646,7 +598,7 @@ class AdvancedScanner:
 def main():
     display_banner()
     
-    parser = argparse.ArgumentParser(description="උසස් රන් කිරීමේ ස්කැනරය - Advanced Web Vulnerability Scanner")
+    parser = argparse.ArgumentParser(description="Advanced Web Vulnerability Scanner")
     parser.add_argument("-u", "--url", help="Target URL to scan (e.g., http://example.com)")
     parser.add_argument("-H", "--host", help="Target host to scan")
     parser.add_argument("-p", "--port", type=int, help="Port to scan (default: 80 or 443)")
@@ -670,7 +622,6 @@ def main():
                        help="Scan intensity level: 1=Low, 2=Medium, 3=High (default: 2)")
     parser.add_argument("--plugins", help="Comma-separated list of plugins to enable")
     
-    # If no arguments provided, show help
     if len(sys.argv) == 1:
         parser.print_help()
         print("\n\033[1;36mInteractive mode:\033[0m")
@@ -715,7 +666,6 @@ def main():
     else:
         args = parser.parse_args()
         
-        # Determine target host
         if args.url:
             if not is_valid_url(args.url):
                 print("\033[1;31mInvalid URL format. Please include http:// or https://\033[0m")
@@ -732,15 +682,12 @@ def main():
             print("\033[1;31mYou must specify either a URL with -u/--url or a host with -H/--host\033[0m")
             return
         
-        # Set default port if not specified
         if not port:
             port = 443 if use_ssl else 80
         
-        # Set default format if output is specified but format is not
         if args.output and not args.format:
             args.format = "txt"
         
-        # Parse cookies
         cookies = {}
         if args.cookies:
             for cookie in args.cookies.split(';'):
@@ -748,7 +695,6 @@ def main():
                     key, value = cookie.split('=', 1)
                     cookies[key.strip()] = value.strip()
         
-        # Parse headers
         headers = {}
         if args.headers:
             for header in args.headers.split(';'):
@@ -756,14 +702,12 @@ def main():
                     key, value = header.split(':', 1)
                     headers[key.strip()] = value.strip()
         
-        # Parse auth
         auth = None
         if args.auth:
             if ':' in args.auth:
                 username, password = args.auth.split(':', 1)
                 auth = (username.strip(), password.strip())
         
-        # Parse plugins
         plugins = None
         if args.plugins:
             plugins = [p.strip() for p in args.plugins.split(',')]
@@ -800,4 +744,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
