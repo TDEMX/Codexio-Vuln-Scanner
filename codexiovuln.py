@@ -26,7 +26,7 @@ except:
 # DeepSeek API integration - SECURE VERSION
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 # API key should be set via environment variable, not hardcoded
-export DEEPSEEK_API_KEY='sk-1e1dcbe5e1a74850b4a24a40ba202fdd'
+export DEEPSEEK_API_KEY=('sk-1e1dcbe5e1a74850b4a24a40ba202fdd')
  
 
 BANNER = """
@@ -915,6 +915,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
