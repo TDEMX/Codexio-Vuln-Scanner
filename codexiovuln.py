@@ -23,28 +23,31 @@ try:
 except:
     pass
 
-# DeepSeek API integration - SECURE VERSION
-#DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-# API key should be set via environment variable, not hardcoded
-#DEEPSEEK_API_KEY = "sk-b6dc57f44db44448877120329f71f563"
+# Set the API key for this run
+os.environ['DEEPSEEK_API_KEY'] = 'sk-8c2ddaedf3904b30a7bf83ec49fcb949'
+
+DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+# API key should be set via environment variable
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
 
 BANNER = """
 \033[1;33m
-                             ___====-_  _-====___                         
-                      _--^^^#####//      \\#####^^^--_                      
-                   _-^##########// (    ) \\##########^-_                     
+                             __====-  -====__                         
+                      --^^^#####//      \\#####^^^--                      
+                   -^##########// (    ) \\##########^-                     
                   -############//  |\^^/|  \\############-                   
-                _/############//   (@::@)   \\############\_                  
+                /############//   (@::@)   \\############\                  
                /#############((     \\//     ))#############\                 
               -###############\\    (oo)    //###############-                
              -#################\\  / VV \  //#################-               
             -###################\\/      \//###################-              
-          _#/|##########/\######(   /\   )######/\##########|\#_              
+          #/|##########/\######(   /\   )######/\##########|\#              
           |/ |#/\#/\#/\/  \#/\##\  |  |  /##/\#/  \/\#/\#/\#| \|              
           `  |/  V  V  `   V  \#\| |  | |/#/  V   '  V  V  \|  '                 
               `   `  `      `   / | |  | | \   '      '  '   '                                  
                               (  | |  | |  )                                 
-                             __\ | |  | | /__                                
+                             _\ | |  | | /_                                
                            (vv C O D E X I O vv)    
 
            ██████╗ ██████╗ ██████╗ ███████╗██╗  ██╗██╗ ██████╗ 
@@ -55,7 +58,7 @@ BANNER = """
            ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝ ╚═════╝ 
               AI Powered Advanced Web Application Vulnerability Scanner  
 
-\033[1;32m   A N A L Y Z E R\033[0m          \033[1;33m|___/\033[0m
+\033[1;32m   A N A L Y Z E R\033[0m          \033[1;33m|_/\033[0m
 
 \033[1;36mAdvanced Web Application Vulnerability Scanner\033[0m
 \033[1;31mCodexio Web New!\033[0m
@@ -77,7 +80,7 @@ def is_valid_url(url):
         return False
 
 class AdvancedScanner:
-    def __init__(self, target, output_format=None, output_file=None, 
+    def _init_(self, target, output_format=None, output_file=None, 
                  use_ssl=False, port=None, timeout=10, user_agent=None,
                  threads=5, delay=0, cookies=None, headers=None, 
                  auth=None, proxy=None, follow_redirects=True, 
@@ -917,10 +920,5 @@ def main():
         print(f"\033[1;31m[!] Error: {str(e)}\033[0m")
         sys.exit(1)
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
-
-
-
-
-
