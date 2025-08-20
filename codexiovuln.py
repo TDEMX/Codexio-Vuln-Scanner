@@ -24,9 +24,9 @@ except:
     pass
 
 # DeepSeek API integration - SECURE VERSION
-DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+#DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 # API key should be set via environment variable, not hardcoded
-DEEPSEEK_API_KEY = "sk-b6dc57f44db44448877120329f71f563"
+#DEEPSEEK_API_KEY = "sk-b6dc57f44db44448877120329f71f563"
 
 BANNER = """
 \033[1;33m
@@ -100,7 +100,12 @@ class AdvancedScanner:
         self.scan_level = scan_level 
         self.plugins = plugins or ["common_files", "common_dirs", "xss", "sqli", "rce"]
         self.deepseek_analysis = deepseek_analysis
-        
+
+        # DeepSeek API integration - SECURE VERSION
+        DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+        # API key should be set via environment variable, not hardcoded
+        DEEPSEEK_API_KEY = "sk-b6dc57f44db44448877120329f71f563"
+                     
         # Security check for API key
         if self.deepseek_analysis and not DEEPSEEK_API_KEY:
             print("\033[1;31m[!] ERROR: DEEPSEEK_API_KEY environment variable not set\033[0m")
@@ -914,6 +919,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
