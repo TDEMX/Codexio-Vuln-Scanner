@@ -23,9 +23,10 @@ try:
 except:
     pass
 
-# DeepSeek API integration
+# DeepSeek API integration - SECURE VERSION
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-DEEPSEEK_API_KEY = os.environ.get("sk-f1c0cd179508496780f3a9f633f747a5")  # Set your API key in environment variables
+# API key should be set via environment variable, not hardcoded
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 BANNER = """
 \033[1;33m
@@ -99,6 +100,12 @@ class AdvancedScanner:
         self.scan_level = scan_level 
         self.plugins = plugins or ["common_files", "common_dirs", "xss", "sqli", "rce"]
         self.deepseek_analysis = deepseek_analysis
+        
+        # Security check for API key
+        if self.deepseek_analysis and not DEEPSEEK_API_KEY:
+            print("\033[1;31m[!] ERROR: DEEPSEEK_API_KEY environment variable not set\033[0m")
+            print("\033[1;33m[!] To use AI analysis, set your API key: export DEEPSEEK_API_KEY='your_key_here'\033[0m")
+            self.deepseek_analysis = False
         
         self.results = []
         self.vulnerability_report = []
