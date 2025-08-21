@@ -24,7 +24,7 @@ except:
     pass
 
 # Set the API key for this run
-os.environ['DEEPSEEK_API_KEY'] = 'sk-05e12e46686d4afe8337325b7a3893ed'
+os.environ['DEEPSEEK_API_KEY'] = 'sk-0edabb5a4b704028a78e17d8c39c305d'
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 # API key should be set via environment variable
@@ -979,4 +979,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
