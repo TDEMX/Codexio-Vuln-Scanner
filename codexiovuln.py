@@ -83,7 +83,8 @@ class AdvancedScanner:
                  use_ssl=False, port=None, timeout=10, user_agent=None,
                  threads=5, delay=0, cookies=None, headers=None, 
                  auth=None, proxy=None, follow_redirects=True, 
-                 scan_level=2, plugins=None, deepseek_analysis=False):
+                 scan_level=2, plugins=None, deepseek_analysis=False,
+                 debug=False):
         
         self.target = target
         self.output_format = output_format
@@ -102,6 +103,7 @@ class AdvancedScanner:
         self.scan_level = scan_level 
         self.plugins = plugins or ["common_files", "common_dirs", "xss", "sqli", "rce"]
         self.deepseek_analysis = deepseek_analysis
+        self.debug = debug
         
         # Security check for API key
         if self.deepseek_analysis and not DEEPSEEK_API_KEY:
@@ -494,26 +496,32 @@ class AdvancedScanner:
         """Analyze vulnerabilities using DeepSeek API and generate solutions"""
         if not DEEPSEEK_API_KEY:
             print("\033[1;33m[~] DeepSeek API key not found. Skipping AI analysis.\033[0m")
-            return None
+            return "AI analysis skipped - API key not configured"
         
         try:
+            print(f"\033[1;35m[*] Sending request to DeepSeek API for {vulnerability_data.get('type')}...\033[0m")
+            
+            # Create a more detailed prompt for better solutions
             prompt = f"""
-            Analyze the following web vulnerability and provide a detailed solution:
-            
-            Vulnerability Type: {vulnerability_data.get('type', 'Unknown')}
-            URL: {vulnerability_data.get('url', 'Unknown')}
-            Description: {vulnerability_data.get('description', 'No description')}
-            Details: {vulnerability_data.get('details', 'No details')}
-            
-            Please provide:
-            1. A brief explanation of the vulnerability
-            2. The potential impact if exploited
-            3. Step-by-step remediation instructions
-            4. Code examples for fixing the issue if applicable
-            5. Preventive measures for the future
-            
-            Format the response in clear sections.
-            """
+ඔබ ජංගම දූෂණ විශ්ලේෂණ专家. පහත දූෂණය විශ්ලේෂණය කර සවිස්තරාත්මක විසඳුම් සපයන්න:
+
+දූෂණ වර්ගය: {vulnerability_data.get('type', 'Unknown')}
+URL: {vulnerability_data.get('url', 'Unknown')}
+විස්තර: {vulnerability_data.get('description', 'No description')}
+විස්තර: {vulnerability_data.get('details', 'No details')}
+දරුණු බව: {vulnerability_data.get('severity', 'Unknown')}
+
+කරුණාකර ලබා දෙන්න:
+1. දූෂණය පිළිබඳ සංක්ෂිප්ත පැහැදිලි කිරීම
+2. ප්‍රයෝජනයට ගත්තහොත් සිදුවිය හැකි බලපෑම
+3. පියවරෙන් පියවර නිරාකරණ උපදෙස්
+4. ගැටළුව නිරාකරණය කිරීම සඳහා කේත උදාහරණ (අදාල නම්)
+5. අනාගතයේදී වැළැක්වීමේ පියවර
+6. වහාම ක්‍රියාත්මක කළ හැකි කෙටිකාලීන විසඳුම්
+7. දිගුකාලීන ආරක්ෂක පියවර
+
+ප්‍රතිචාරය පැහැදිලි කොටස් වලින් ආකෘතිගත කරන්න.
+"""
             
             headers = {
                 "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
@@ -523,26 +531,47 @@ class AdvancedScanner:
             payload = {
                 "model": "deepseek-coder",
                 "messages": [
-                    {"role": "system", "content": "You are a cybersecurity expert specializing in web application security and vulnerability remediation."},
+                    {"role": "system", "content": "ඔබ ජංගම යෙදුම් ආරක්ෂණය සහ දූෂණ නිරාකරණය විශේෂඥයෙක්. සවිස්තරාත්මක, ප්‍රායෝගික විසඳුම් සපයන්න."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 2000
+                "max_tokens": 2500
             }
             
-            response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
-            response.raise_for_status()
+            if self.debug:
+                print(f"\033[1;36m[DEBUG] API Request: {json.dumps(payload, indent=2)}\033[0m")
+            
+            # Add timeout and better error handling
+            response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=45)
+            
+            # Check for HTTP errors
+            if response.status_code != 200:
+                print(f"\033[1;31m[!] API Error: HTTP {response.status_code} - {response.text}\033[0m")
+                return f"API Error: HTTP {response.status_code}"
             
             result = response.json()
-            return result['choices'][0]['message']['content']
             
+            # Check if choices exist in response
+            if 'choices' in result and len(result['choices']) > 0:
+                return result['choices'][0]['message']['content']
+            else:
+                print(f"\033[1;31m[!] Unexpected API response format\033[0m")
+                return "Error: Invalid API response format"
+                
+        except requests.exceptions.Timeout:
+            print("\033[1;31m[!] DeepSeek API timeout\033[0m")
+            return "API request timeout"
+        except requests.exceptions.ConnectionError:
+            print("\033[1;31m[!] DeepSeek API connection error\033[0m")
+            return "API connection failed"
         except Exception as e:
             print(f"\033[1;31m[!] DeepSeek API error: {str(e)}\033[0m")
-            return None
+            return f"API Error: {str(e)}"
 
     def generate_vulnerability_report(self):
         """Generate comprehensive vulnerability report with AI analysis"""
         if not self.vulnerability_report:
+            print("\033[1;33m[~] No vulnerabilities found to report\033[0m")
             return
         
         print("\n\033[1;35m" + "="*80 + "\033[0m")
@@ -550,14 +579,24 @@ class AdvancedScanner:
         print("\033[1;35m" + "="*80 + "\033[0m")
         
         for i, vuln in enumerate(self.vulnerability_report, 1):
-            print(f"\n\033[1;36m[{i}] {vuln['type']} Vulnerability\033[0m")
+            print(f"\n\033[1;36m[{i}] {vuln['type']} Vulnerability - {vuln.get('severity', 'Unknown')}\033[0m")
             print(f"   URL: {vuln['url']}")
             print(f"   Description: {vuln['description']}")
-            print(f"   Severity: {vuln.get('severity', 'Unknown')}")
+            print(f"   Details: {vuln.get('details', 'No details')}")
             
             if self.deepseek_analysis and vuln.get('ai_analysis'):
-                print(f"\n\033[1;33m   AI Analysis:\033[0m")
-                print(f"   {vuln['ai_analysis']}")
+                if vuln['ai_analysis'].startswith("Error") or "failed" in vuln['ai_analysis'].lower():
+                    print(f"\n\033[1;31m   AI Analysis Failed: {vuln['ai_analysis']}\033[0m")
+                else:
+                    print(f"\n\033[1;33m   AI Analysis and Solutions:\033[0m")
+                    # Split analysis into manageable chunks
+                    analysis_lines = vuln['ai_analysis'].split('\n')
+                    for line in analysis_lines:
+                        if line.strip():
+                            print(f"   {line}")
+            else:
+                print(f"\n\033[1;33m   Manual Investigation Required\033[0m")
+                print(f"   No AI analysis available for this vulnerability")
             
             print("\033[1;35m" + "-"*80 + "\033[0m")
 
@@ -571,6 +610,22 @@ class AdvancedScanner:
             print("\033[1;35m[*] DeepSeek AI analysis enabled\033[0m")
         
         print("\033[1;33m[*] Starting comprehensive vulnerability assessment...\033[0m")
+        
+        # Test API connection first if AI analysis is enabled
+        if self.deepseek_analysis:
+            test_result = self.analyze_with_deepseek({
+                "type": "TEST", 
+                "url": "http://test.com", 
+                "description": "Test connection",
+                "details": "Testing API connectivity",
+                "severity": "Info"
+            })
+            if "Error" in test_result or "timeout" in test_result.lower():
+                print(f"\033[1;31m[!] API connection test failed: {test_result}\033[0m")
+                print("\033[1;33m[!] Continuing scan without AI analysis\033[0m")
+                self.deepseek_analysis = False
+            else:
+                print("\033[1;32m[+] API connection test successful\033[0m")
         
         if "dns_enum" in self.plugins:
             self.dns_enumerate()
@@ -660,13 +715,16 @@ class AdvancedScanner:
         # Perform AI analysis if enabled
         if self.deepseek_analysis and self.vulnerability_report:
             print("\n\033[1;35m[*] Starting AI-powered vulnerability analysis with DeepSeek...\033[0m")
-            for vuln in self.vulnerability_report:
-                if vuln['severity'] in ['High', 'Critical']:
-                    print(f"\033[1;35m[*] Analyzing {vuln['type']} vulnerability...\033[0m")
+            for i, vuln in enumerate(self.vulnerability_report):
+                if vuln['severity'] in ['High', 'Critical', 'Medium']:
+                    print(f"\033[1;35m[*] Analyzing {vuln['type']} vulnerability ({i+1}/{len(self.vulnerability_report)})...\033[0m")
                     analysis = self.analyze_with_deepseek(vuln)
-                    if analysis:
+                    if analysis and "Error" not in analysis:
                         vuln['ai_analysis'] = analysis
-                    time.sleep(1)  # Rate limiting
+                    else:
+                        vuln['ai_analysis'] = "Analysis failed - " + analysis
+                    # Better rate limiting
+                    time.sleep(2 if i % 5 == 0 else 0.5)
         
         print(f"\033[1;33m[*] Scan completed. Found {len(self.results)} potential issues.\033[0m")
         print(f"\033[1;31m[*] Found {len(self.vulnerability_report)} vulnerabilities.\033[0m")
@@ -705,14 +763,13 @@ class AdvancedScanner:
                         f.write("="*70 + "\n\n")
                         
                         for i, vuln in enumerate(self.vulnerability_report, 1):
-                            f.write(f"[{i}] {vuln['type']} Vulnerability\n")
+                            f.write(f"[{i}] {vuln['type']} Vulnerability - {vuln.get('severity', 'Unknown')}\n")
                             f.write(f"URL: {vuln['url']}\n")
                             f.write(f"Description: {vuln['description']}\n")
-                            f.write(f"Severity: {vuln.get('severity', 'Unknown')}\n")
                             f.write(f"Details: {vuln.get('details', 'No details')}\n")
                             
                             if vuln.get('ai_analysis'):
-                                f.write(f"\nAI Analysis:\n{vuln['ai_analysis']}\n")
+                                f.write(f"\nAI Analysis and Solutions:\n{vuln['ai_analysis']}\n")
                             
                             f.write("\n" + "-"*50 + "\n\n")
             
@@ -746,14 +803,15 @@ class AdvancedScanner:
                     if self.vulnerability_report:
                         writer.writerow([])
                         writer.writerow(['VULNERABILITY REPORT'])
-                        writer.writerow(['Type', 'URL', 'Description', 'Severity', 'Details'])
+                        writer.writerow(['Type', 'URL', 'Description', 'Severity', 'Details', 'AI_Solutions'])
                         for vuln in self.vulnerability_report:
                             writer.writerow([
                                 vuln['type'],
                                 vuln['url'],
                                 vuln['description'],
                                 vuln.get('severity', ''),
-                                vuln.get('details', '')
+                                vuln.get('details', ''),
+                                vuln.get('ai_analysis', 'No AI analysis')
                             ])
             
             print(f"\033[1;32m[*] Results saved to {self.output_file} in {self.output_format} format\033[0m")
@@ -789,6 +847,8 @@ def main():
     parser.add_argument("--plugins", help="Comma-separated list of plugins to enable")
     parser.add_argument("--ai-analysis", action="store_true", 
                        help="Enable AI-powered vulnerability analysis with DeepSeek")
+    parser.add_argument("--debug", action="store_true", 
+                       help="Enable debug mode for detailed output")
     
     if len(sys.argv) == 1:
         parser.print_help()
@@ -823,6 +883,7 @@ def main():
             level_choice = 2
         
         ai_analysis = input("\n\033[1;37mEnable AI analysis with DeepSeek? (y/n) [n]: \033[0m").lower() == 'y'
+        debug_mode = input("\n\033[1;37mEnable debug mode? (y/n) [n]: \033[0m").lower() == 'y'
         
         scanner = AdvancedScanner(
             target=host,
@@ -832,7 +893,8 @@ def main():
             port=port,
             timeout=10,
             scan_level=level_choice,
-            deepseek_analysis=ai_analysis
+            deepseek_analysis=ai_analysis,
+            debug=debug_mode
         )
     else:
         args = parser.parse_args()
@@ -900,7 +962,8 @@ def main():
             follow_redirects=not args.no_redirects,
             scan_level=args.level,
             plugins=plugins,
-            deepseek_analysis=args.ai_analysis
+            deepseek_analysis=args.ai_analysis,
+            debug=args.debug
         )
     
     try:
@@ -916,7 +979,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
