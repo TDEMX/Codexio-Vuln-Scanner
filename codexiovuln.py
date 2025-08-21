@@ -16,8 +16,7 @@ import dns.resolver
 from urllib.parse import urlparse, quote, unquote
 from datetime import datetime
 from bs4 import BeautifulSoup
-#import google.generativeai as genai
-import google_genai as genai
+import google.generativeai as genai
 
 
 try:
@@ -30,7 +29,7 @@ except:
 # API key should be set via environment variable
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-BANNER = """
+BANNER = r"""
 \033[1;33m
                              __====-  -====__
                       --^^^#####//      \\#####^^^--
@@ -40,7 +39,7 @@ BANNER = """
                /#############((     \\//     ))#############\
               -###############\\    (oo)    //###############-
              -#################\\  / VV \  //#################-
-            -###################\\/      \//###################-
+            -###################\\/      \\//###################-
           #/|##########/\######(   /\   )######/\##########|\#
           |/ |#/\#/\#/\/  \#/\##\  |  |  /##/\#/  \/\#/\#/\#| \|
           `  |/  V  V  `   V  \#\| |  | |/#/  V   '  V  V  \|  '
@@ -79,7 +78,7 @@ def is_valid_url(url):
         return False
 
 class AdvancedScanner:
-    def _init_(self, target, output_format=None, output_file=None,
+    def __init__(self, target, output_format=None, output_file=None,
                  use_ssl=False, port=None, timeout=10, user_agent=None,
                  threads=5, delay=0, cookies=None, headers=None,
                  auth=None, proxy=None, follow_redirects=True,
@@ -174,7 +173,7 @@ class AdvancedScanner:
             {"id": 17, "path": "/upload/", "description": "Upload directory"},
             {"id": 18, "path": "/cgi-bin/", "description": "CGI bin directory"},
             {"id": 19, "path": "/admin/login.php", "description": "Admin login"},
-            {"id": 20, "path": "/wp-login.php", "description": "WordPress login"},
+            {"id": 20, "path": "/wp-login.php", "description": "WordPress login"],
         ]
 
         medium_checks = [
@@ -210,6 +209,45 @@ class AdvancedScanner:
             checks.extend(high_checks)
 
         return checks
+
+    def load_vulnerability_signatures(self):
+        return {
+            "sql_errors": [
+                "sql syntax.*mysql",
+                "warning.*mysql",
+                "mysql_fetch_array",
+                "mysqli_fetch_array",
+                "postgresql.*error",
+                "ora-.*error",
+                "microsoft.*odbc.*driver",
+                "sqlserver.*driver",
+                "syntax error.*sql",
+                "unclosed quotation mark",
+                "you have an error in your sql syntax",
+            ],
+            "xss_patterns": [
+                "alert\\(",
+                "script.*src=",
+                "onerror=",
+                "onload=",
+                "onmouseover=",
+                "javascript:",
+                "eval\\(",
+                "document\\.cookie",
+            ],
+            "rce_patterns": [
+                "root:.*:0:0:",
+                "\\bin\\bash",
+                "\\bin\\sh",
+                "etc/passwd",
+                "etc/shadow",
+                "command.*executed",
+                "system\\(",
+                "exec\\(",
+                "passthru\\(",
+                "shell_exec\\(",
+            ]
+        }
 
     def load_vulnerability_signatures(self):
         return {
@@ -948,4 +986,5 @@ def main():
 
 if _name_ == "_main_":
     main()
+
 
