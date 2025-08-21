@@ -16,7 +16,9 @@ import dns.resolver
 from urllib.parse import urlparse, quote, unquote
 from datetime import datetime
 from bs4 import BeautifulSoup
-import google.generativeai as genai
+#import google.generativeai as genai
+import google_genai as genai
+
 
 try:
     import urllib3
@@ -946,3 +948,4 @@ def main():
 
 if _name_ == "_main_":
     main()
+
